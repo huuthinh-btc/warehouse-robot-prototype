@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<link rel="stylesheet"
+href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+
+<link rel="stylesheet"
+href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
+<link rel="stylesheet" href="css/style.css">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+</head>
+
+<body>
+
+<div class="sidebar">
+
+<a href="dashboard.html"><i class="bi bi-grid"></i></a>
+<a href="warehouse.html"><i class="bi bi-house"></i></a>
+<a href="robots.html"><i class="bi bi-robot"></i></a>
+
+</div>
+
+<div class="main">
+
+<h4 class="mb-4">Warehouse And Shelf Management</h4>
+
+<div class="row">
+
+<div class="col-md-2">
+<div class="card p-3">
+<h6>Warehouse Products</h6>
+<h4>15000</h4>
+</div>
+</div>
+
+<div class="col-md-2">
+<div class="card p-3">
+<h6>Total Shelf Product</h6>
+<h4>9860</h4>
+</div>
+</div>
+
+<div class="col-md-2">
+<div class="card p-3">
+<h6>Total Active Robot</h6>
+<h4>200</h4>
+</div>
+</div>
+
+<div class="col-md-2">
+<div class="card p-3">
+<h6>Product Category</h6>
+<h4>343</h4>
+</div>
+</div>
+
+</div>
+
+<div class="row mt-4">
+
+<div class="col-md-8">
+
+<div class="card p-4 mb-4">
+
+<h6>Stock Report</h6>
+
+<canvas id="stockChart"></canvas>
+
+</div>
+
+<div class="card p-4">
+
+<h6>Robot Quality Report</h6>
+
+<canvas id="robotChart"></canvas>
+
+</div>
+
+</div>
+
+<div class="col-md-4">
+
+<div class="card p-3 mb-3">
+
+<h6>Low Stock Alert</h6>
+<h3>23</h3>
+
+</div>
+
+<div class="card p-3 mb-3">
+
+<h6>Expired Alert</h6>
+<h3>3</h3>
+
+</div>
+
+<div class="card p-3 mb-3">
+
+<h6>Active Robot</h6>
+<h3>2</h3>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+new Chart(
+document.getElementById("stockChart"),
+{
+type:"bar",
+data:{
+labels:["Jan","Feb","Mar","Apr","May","Jun"],
+datasets:[
+{
+label:"Stock In",
+data:[15000,13000,16000,18000,10000,17000],
+backgroundColor:"#4a6cf7"
+}
+]
+}
+})
+
+new Chart(
+document.getElementById("robotChart"),
+{
+type:"bar",
+data:{
+labels:["Robot01","Robot02","Robot03","Robot04"],
+datasets:[
+{
+label:"Good",
+data:[74,73,47,67],
+backgroundColor:"#4a6cf7"
+},
+{
+label:"Error",
+data:[18,13,18,12],
+backgroundColor:"#f0ad4e"
+},
+{
+label:"Late",
+data:[8,14,35,21],
+backgroundColor:"#d9534f"
+}
+]
+}
+})
+
+</script>
+
+</body>
+</html>
