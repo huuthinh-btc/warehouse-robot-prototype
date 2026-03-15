@@ -1,103 +1,155 @@
-body{
-background:#f4f6fb;
-font-family:"Segoe UI", Arial, sans-serif;
+/* --- RESET & CẤU TRÚC CHÍNH --- */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
 }
 
-/* SIDEBAR */
-
-.sidebar{
-width:70px;
-height:100vh;
-position:fixed;
-background:white;
-border-right:1px solid #eee;
-display:flex;
-flex-direction:column;
-align-items:center;
-padding-top:20px;
+body {
+    background: #f4f6fb;
+    font-family: "Segoe UI", Arial, sans-serif;
+    display: flex;
+    min-height: 100vh;
 }
 
-.sidebar a{
-display:flex;
-align-items:center;
-justify-content:center;
-width:100%;
-height:60px;
-font-size:20px;
-color:#8c8c8c;
-transition:0.2s;
+/* --- SIDEBAR --- */
+.sidebar {
+    width: 70px;
+    background: white;
+    border-right: 1px solid #eee;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 20px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    flex-shrink: 0;
 }
 
-.sidebar a:hover{
-background:#eef1ff;
-color:#4a6cf7;
+.sidebar a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 60px;
+    font-size: 20px;
+    color: #8c8c8c;
+    transition: 0.2s;
+    text-decoration: none;
 }
 
-/* MAIN CONTENT */
-
-.main{
-margin-left:70px;
-padding:30px;
+.sidebar a:hover, .sidebar a.active {
+    background: #eef1ff;
+    color: #4a6cf7;
+    border-radius: 0 10px 10px 0;
 }
 
-/* CARDS */
-
-.card{
-border-radius:12px;
-border:none;
-padding:10px;
-box-shadow:0 4px 10px rgba(0,0,0,0.05);
+/* --- VÙNG NỘI DUNG CHÍNH --- */
+.main {
+    flex-grow: 1;
+    padding: 30px;
+    overflow-y: auto;
 }
 
-/* TABLE */
-
-.table{
-background:white;
-border-radius:10px;
-overflow:hidden;
+h4 {
+    color: #2b3674;
+    font-weight: 700;
 }
 
-.table thead{
-background:#f7f8fc;
+/* --- THẺ CARD --- */
+.card {
+    background: white;
+    border-radius: 16px;
+    border: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
 }
 
-/* ROBOT STATUS */
-
-.robot-status{
-padding:4px 12px;
-border-radius:20px;
-font-size:12px;
-font-weight:500;
+.card h6 {
+    font-size: 13px;
+    color: #a3aed0;
+    font-weight: 600;
 }
 
-.available{
-background:#e8f7ee;
-color:#2eb85c;
+.card h4 {
+    font-weight: 700;
+    color: #2b3674;
 }
 
-.busy{
-background:#fde9e9;
-color:#e55353;
+/* --- CARD HEADER (CHỨA TIÊU ĐỀ & BỘ LỌC) --- */
+.card-header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
 }
 
-/* KPI CARDS */
-
-.card h6{
-font-size:13px;
-color:#888;
+/* Icon trong Card Cảnh báo (To hơn và có nền) */
+.card-header-flex i {
+    font-size: 20px;
+    background: #f4f7fe;
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
 }
 
-.card h4{
-font-weight:600;
+/* Bộ lọc list time (Nhỏ lại theo mẫu) */
+.filter-select {
+    border: none;
+    background: #f4f7fe;
+    color: #a3aed0;
+    font-size: 10px;
+    padding: 3px 10px;
+    border-radius: 8px;
+    outline: none;
+    cursor: pointer;
+    font-weight: 600;
 }
 
-/* BUTTON */
-
-.btn-primary{
-background:#4a6cf7;
-border:none;
+/* --- LAYOUT 3 CHỈ SỐ (ALERTS) --- */
+.alert-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    text-align: center;
+    border-top: 1px solid #f4f7fe;
+    padding-top: 15px;
+    margin-top: 5px;
 }
 
-.btn-primary:hover{
-background:#3d5fe3;
+.stat-item h5 {
+    font-weight: 700;
+    margin-bottom: 2px;
+    font-size: 18px;
+    color: #2b3674;
+}
+
+.stat-item p {
+    font-size: 10px;
+    color: #a3aed0;
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+/* --- MÀU SẮC TRẠNG THÁI --- */
+.text-danger { color: #ee5d50 !important; }
+.text-primary { color: #4a6cf7 !important; }
+.text-warning { color: #ffb54d !important; }
+
+/* --- NÚT BẤM (BUTTONS) --- */
+.btn-primary {
+    background: #4a6cf7;
+    border: none;
+    font-size: 13px;
+    font-weight: 700;
+    border-radius: 12px;
+    transition: 0.3s;
+}
+
+.btn-primary:hover {
+    background: #3d5fe3;
+    transform: translateY(-1px);
 }

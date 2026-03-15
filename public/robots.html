@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="vi">
 <head>
+
+<meta charset="UTF-8">
 
 <link rel="stylesheet"
 href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
@@ -9,39 +10,78 @@ href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
 <link rel="stylesheet"
 href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 
-<link rel="stylesheet" href="css/style.css">
+<style>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+body{background:#f8f9fa}
+
+.sidebar{
+width:60px;
+height:100vh;
+background:#fff;
+position:fixed;
+border-right:1px solid #ddd;
+display:flex;
+flex-direction:column;
+align-items:center;
+padding-top:20px;
+}
+
+.sidebar a{
+font-size:24px;
+margin-bottom:20px;
+color:#666;
+}
+
+.main{
+margin-left:80px;
+padding:20px;
+}
+
+.card{
+border-radius:12px;
+border:none;
+box-shadow:0 4px 12px rgba(0,0,0,0.05);
+}
+
+.status-badge{
+padding:5px 12px;
+border-radius:20px;
+font-size:12px;
+font-weight:bold;
+}
+
+.Working{background:#e7f1ff;color:#0d6efd}
+.Idle{background:#eafbea;color:#28a745}
+
+</style>
 
 </head>
 
 <body>
 
 <div class="sidebar">
-
 <a href="dashboard.html"><i class="bi bi-grid"></i></a>
 <a href="warehouse.html"><i class="bi bi-house"></i></a>
-<a href="robots.html"><i class="bi bi-robot"></i></a>
-
+<a href="robots.html" style="color:#007bff"><i class="bi bi-robot"></i></a>
 </div>
 
 <div class="main">
 
-<h4>Robot Management</h4>
+<h4 class="mb-4">Robot Management</h4>
 
 <div class="row mb-4">
 
 <div class="col-md-6">
 <div class="card p-3">
-<h6>All Robots</h6>
-<h3>210</h3>
+<h6 class="text-muted">All Robots</h6>
+<h3 id="totalRobots">0</h3>
 </div>
 </div>
 
 <div class="col-md-6">
 <div class="card p-3">
-<h6>Efficiency</h6>
-<h3>80%</h3>
+<h6 class="text-muted">Efficiency</h6>
+<h3>85%</h3>
 </div>
 </div>
 
@@ -51,18 +91,18 @@ href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.c
 
 <div class="col-md-8">
 
-<table class="table">
+<div class="card p-3">
+
+<table class="table table-hover">
 
 <thead>
-
 <tr>
 <th>ID</th>
-<th>Task</th>
+<th>Current Task</th>
 <th>Area</th>
-<th>Time</th>
+<th>Start Time</th>
 <th>Status</th>
 </tr>
-
 </thead>
 
 <tbody id="robotTable"></tbody>
@@ -71,7 +111,37 @@ href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.c
 
 </div>
 
+</div>
+
+
 <div class="col-md-4">
+
+<div class="card p-3 mb-3">
+
+<h6>Create Task</h6>
+
+<select id="robotSelect" class="form-control mb-2"></select>
+
+<select id="productSelect" class="form-control mb-2"></select>
+
+<select id="taskType" class="form-control mb-2">
+
+<option>Bổ sung kệ hàng</option>
+<option>Thu hồi hàng hết hạn</option>
+<option>Kiểm tra hàng hết hạn</option>
+<option>Điều chỉnh vị trí sai</option>
+
+</select>
+
+<button class="btn btn-primary w-100"
+onclick="createTask()">
+
+Create Task
+
+</button>
+
+</div>
+
 
 <div class="card p-3">
 
@@ -87,48 +157,159 @@ href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.c
 
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <script>
 
-fetch("/api/robots")
-.then(res=>res.json())
-.then(data=>{
+async function fetchRobots(){
 
-const table=document.getElementById("robotTable")
+const res = await fetch("/api/robots");
+
+const data = await res.json();
+
+const table = document.getElementById("robotTable");
+
+table.innerHTML="";
+
+document.getElementById("totalRobots").innerText=data.length;
+
+let working=0;
+let idle=0;
 
 data.forEach(r=>{
+
+if(r.status==="Đang bận") working++;
+else idle++;
 
 table.innerHTML+=`
 
 <tr>
 
-<td>${r.id}</td>
+<td class="fw-bold text-primary">${r.id}</td>
+
 <td>${r.task}</td>
-<td>${r.area}</td>
+
+<td><i class="bi bi-geo-alt"></i> ${r.area}</td>
+
 <td>${r.time}</td>
-<td><span class="robot-status ${r.status}">
+
+<td>
+
+<span class="status-badge ${r.status==="Đang bận"?"Working":"Idle"}">
+
 ${r.status}
-</span></td>
+
+</span>
+
+</td>
 
 </tr>
 
-`
+`;
 
+});
+
+updateChart(working,idle);
+
+}
+
+async function loadDropdowns(){
+
+/* ROBOTS */
+
+const robots = await fetch("/api/robots");
+const rData = await robots.json();
+
+const robotSelect = document.getElementById("robotSelect");
+
+robotSelect.innerHTML="";
+
+rData.forEach(r=>{
+robotSelect.innerHTML+=`<option>${r.id}</option>`;
+});
+
+
+/* PRODUCTS */
+
+const products = await fetch("/api/products");
+const pData = await products.json();
+
+const productSelect = document.getElementById("productSelect");
+
+productSelect.innerHTML="";
+
+pData.forEach(p=>{
+
+const name = p.ID_San_Pham || p.name || p.fields?.ID_San_Pham;
+
+if(name){
+
+productSelect.innerHTML+=`<option>${name}</option>`;
+
+}
+
+});
+
+}
+
+async function createTask(){
+
+const robot = document.getElementById("robotSelect").value;
+const product = document.getElementById("productSelect").value;
+const taskType = document.getElementById("taskType").value;
+
+await fetch("/api/robots/tasks",{
+
+method:"POST",
+
+headers:{
+"Content-Type":"application/json"
+},
+
+body:JSON.stringify({
+robot,
+product,
+taskType
 })
 
-})
+});
 
-new Chart(
-document.getElementById("taskChart"),
-{
+alert("Task created");
+
+fetchRobots();
+
+}
+
+let chart;
+
+function updateChart(w,i){
+
+const pending = Math.max(0,5-w-i);
+
+chart.data.datasets[0].data=[w,i,pending];
+
+chart.update();
+
+}
+
+const ctx = document.getElementById("taskChart");
+
+chart = new Chart(ctx,{
 type:"doughnut",
 data:{
-labels:["Complete","Processing","Pending"],
+labels:["Working","Idle","Pending"],
 datasets:[{
-data:[60,25,15],
-backgroundColor:["#28a745","#f0ad4e","#d9534f"]
+data:[0,0,0],
+backgroundColor:["#0d6efd","#28a745","#dc3545"]
 }]
-}
-})
+},
+options:{cutout:"75%"}
+});
+
+fetchRobots();
+loadDropdowns();
+
+setInterval(fetchRobots,5000);
 
 </script>
 

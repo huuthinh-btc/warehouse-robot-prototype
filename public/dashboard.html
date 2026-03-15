@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html>
-
 <head>
 
 <link rel="stylesheet"
@@ -9,152 +8,259 @@ href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
 <link rel="stylesheet"
 href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 
-<link rel="stylesheet" href="css/style.css">
-
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+
+body{
+background:#f6f8fb;
+}
+
+.sidebar{
+width:60px;
+height:100vh;
+background:#fff;
+position:fixed;
+border-right:1px solid #ddd;
+display:flex;
+flex-direction:column;
+align-items:center;
+padding-top:20px;
+}
+
+.sidebar a{
+font-size:24px;
+margin-bottom:20px;
+color:#666;
+}
+
+.main{
+margin-left:80px;
+padding:20px;
+}
+
+.card{
+border:none;
+border-radius:12px;
+box-shadow:0 4px 10px rgba(0,0,0,0.05);
+}
+
+.chart-card{
+height:380px;
+}
+
+.chart-card canvas{
+height:280px !important;
+}
+
+</style>
 
 </head>
 
 <body>
 
 <div class="sidebar">
-
 <a href="dashboard.html"><i class="bi bi-grid"></i></a>
 <a href="warehouse.html"><i class="bi bi-house"></i></a>
 <a href="robots.html"><i class="bi bi-robot"></i></a>
-
 </div>
+
 
 <div class="main">
 
-<h4 class="mb-4">Warehouse And Shelf Management</h4>
+<h4 class="mb-4 fw-bold">Warehouse Dashboard</h4>
 
-<div class="row">
 
-<div class="col-md-2">
+<div class="row mb-4">
+
+<div class="col-md-3">
 <div class="card p-3">
-<h6>Warehouse Products</h6>
-<h4>15000</h4>
+<h6>Total Robots</h6>
+<h3 id="robots"></h3>
 </div>
 </div>
 
-<div class="col-md-2">
+<div class="col-md-3">
 <div class="card p-3">
-<h6>Total Shelf Product</h6>
-<h4>9860</h4>
+<h6>Total Products</h6>
+<h3 id="products"></h3>
 </div>
 </div>
 
-<div class="col-md-2">
+<div class="col-md-3">
 <div class="card p-3">
-<h6>Total Active Robot</h6>
-<h4>200</h4>
+<h6>Active Tasks</h6>
+<h3 id="activeTasks"></h3>
 </div>
 </div>
 
-<div class="col-md-2">
+<div class="col-md-3">
 <div class="card p-3">
-<h6>Product Category</h6>
-<h4>343</h4>
+<h6>Completed Tasks</h6>
+<h3 id="completedTasks"></h3>
 </div>
 </div>
 
 </div>
 
-<div class="row mt-4">
 
-<div class="col-md-8">
+<div class="row g-3">
 
-<div class="card p-4 mb-4">
-
-<h6>Stock Report</h6>
-
-<canvas id="stockChart"></canvas>
-
+<div class="col-lg-4">
+<div class="card p-3 chart-card">
+<h6 class="mb-3">Task Distribution</h6>
+<canvas id="taskChart"></canvas>
+</div>
 </div>
 
-<div class="card p-4">
-
-<h6>Robot Quality Report</h6>
-
-<canvas id="robotChart"></canvas>
-
+<div class="col-lg-4">
+<div class="card p-3 chart-card">
+<h6 class="mb-3">Robot Task Status</h6>
+<canvas id="statusChart"></canvas>
+</div>
 </div>
 
+<div class="col-lg-4">
+<div class="card p-3 chart-card">
+<h6 class="mb-3">Top Problem Products</h6>
+<canvas id="productChart"></canvas>
 </div>
-
-<div class="col-md-4">
-
-<div class="card p-3 mb-3">
-
-<h6>Low Stock Alert</h6>
-<h3>23</h3>
-
-</div>
-
-<div class="card p-3 mb-3">
-
-<h6>Expired Alert</h6>
-<h3>3</h3>
-
-</div>
-
-<div class="card p-3 mb-3">
-
-<h6>Active Robot</h6>
-<h3>2</h3>
-
 </div>
 
 </div>
 
 </div>
 
-</div>
 
 <script>
 
-new Chart(
-document.getElementById("stockChart"),
-{
-type:"bar",
-data:{
-labels:["Jan","Feb","Mar","Apr","May","Jun"],
-datasets:[
-{
-label:"Stock In",
-data:[15000,13000,16000,18000,10000,17000],
-backgroundColor:"#4a6cf7"
-}
-]
-}
-})
+let taskChart;
+let statusChart;
+let productChart;
 
-new Chart(
-document.getElementById("robotChart"),
-{
-type:"bar",
+async function loadDashboard(){
+
+const res = await fetch("/api/dashboard");
+const data = await res.json();
+
+/* CARDS */
+
+document.getElementById("robots").innerText = data.robots;
+document.getElementById("products").innerText = data.products;
+document.getElementById("activeTasks").innerText = data.activeTasks;
+document.getElementById("completedTasks").innerText = data.completedTasks;
+
+/* TASK SUMMARY */
+
+const taskLabels = Object.keys(data.task_summary);
+const taskValues = Object.values(data.task_summary);
+
+/* STATUS */
+
+const statusLabels = Object.keys(data.robot_status);
+const statusValues = Object.values(data.robot_status);
+
+/* PRODUCTS */
+
+const productLabels = data.top_products.map(p => p.name);
+const productValues = data.top_products.map(p => p.count);
+
+/* PIE CHART */
+
+taskChart = new Chart(document.getElementById("taskChart"),{
+
+type:"pie",
+
 data:{
-labels:["Robot01","Robot02","Robot03","Robot04"],
-datasets:[
-{
-label:"Good",
-data:[74,73,47,67],
-backgroundColor:"#4a6cf7"
-},
-{
-label:"Error",
-data:[18,13,18,12],
-backgroundColor:"#f0ad4e"
-},
-{
-label:"Late",
-data:[8,14,35,21],
-backgroundColor:"#d9534f"
-}
+labels:taskLabels,
+datasets:[{
+label:"Tasks",
+data:taskValues,
+backgroundColor:[
+"#4a6cf7",
+"#ffb54d",
+"#2cd9c5",
+"#ee5d50",
+"#6c8cff"
 ]
+}]
+},
+
+options:{
+responsive:true,
+maintainAspectRatio:false,
+plugins:{
+legend:{
+position:"bottom"
 }
-})
+}
+
+}
+
+});
+
+
+/* STATUS BAR */
+
+statusChart = new Chart(document.getElementById("statusChart"),{
+
+type:"bar",
+
+data:{
+labels:statusLabels,
+datasets:[{
+label:"Tasks",
+data:statusValues,
+backgroundColor:"#4a6cf7"
+}]
+},
+
+options:{
+responsive:true,
+maintainAspectRatio:false,
+plugins:{
+legend:{display:false}
+},
+scales:{
+y:{
+beginAtZero:true
+}
+}
+
+}
+
+});
+
+
+/* PRODUCT BAR */
+
+productChart = new Chart(document.getElementById("productChart"),{
+
+type:"bar",
+
+data:{
+labels:productLabels,
+datasets:[{
+label:"Issues",
+data:productValues,
+backgroundColor:"#4a6cf7"
+}]
+},
+
+options:{
+indexAxis:"y",
+responsive:true,
+maintainAspectRatio:false,
+plugins:{
+legend:{display:false}
+}
+}
+
+});
+
+}
+
+loadDashboard();
 
 </script>
 

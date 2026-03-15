@@ -1,113 +1,179 @@
 const express = require("express");
 const axios = require("axios");
-
 const router = express.Router();
 
 const BASE = process.env.BASE_ID;
 const TOKEN = process.env.AIRTABLE_API_KEY;
-const TABLE = "tbln9pWvSKVC3tjJQ";   // table San_Pham
+
+const headers = {
+  Authorization: `Bearer ${TOKEN}`,
+  "Content-Type": "application/json"
+};
+
+/* =========================
+GET PRODUCTS
+========================= */
+
+router.get("/", async (req, res) => {
+
+  try {
+
+    const [products, categories, locations] = await Promise.all([
+
+      axios.get(`https://api.airtable.com/v0/${BASE}/San_Pham`, { headers }),
+      axios.get(`https://api.airtable.com/v0/${BASE}/Danh_Muc`, { headers }),
+      axios.get(`https://api.airtable.com/v0/${BASE}/Vi_Tri_Ke`, { headers })
+
+    ]);
+
+    /* MAP CATEGORY */
+
+    const catMap = {};
+    categories.data.records.forEach(r => {
+      catMap[r.id] = r.fields["Tên danh mục"];
+    });
+
+    /* MAP LOCATION */
+
+    const locMap = {};
+    locations.data.records.forEach(r => {
+      locMap[r.id] = r.fields["Mã vị trí"];
+    });
+
+    /* BUILD RESPONSE */
+
+    const result = products.data.records.map(r => {
+
+      const f = r.fields;
+
+      const catId = f["Danh_muc_ID"]?.[0];
+      const locId = f["Vi_Tri_Ke"]?.[0];
+
+      return {
+        id: r.id,
+        fields: f,
+        displayCategory: catMap[catId] || "-",
+        displayLocation: locMap[locId] || "-"
+      };
+
+    });
+
+    res.json(result);
+
+  } catch (err) {
+
+    console.log(err.response?.data || err.message);
+    res.status(500).json({ error: "Airtable error" });
+
+  }
+
+});
 
 
 /* =========================
-   GET PRODUCTS
+ADD PRODUCT
 ========================= */
 
-router.get("/", async (req,res)=>{
+router.post("/", async (req, res) => {
 
-try{
+  try {
 
-const response = await axios.get(
+    const { name, rfid, expiry, minStock, stock, categoryId, shelfLocation } = req.body;
 
-`https://api.airtable.com/v0/${BASE}/${TABLE}`,
-
-{
-headers:{
-Authorization:`Bearer ${TOKEN}`
-}
-}
-
-)
-
-const products = response.data.records.filter(
-r => r.fields && r.fields.ID_San_Pham
-)
-
-res.json(products)
-
-}
-
-catch(error){
-
-console.log("GET ERROR:", error.response?.data || error.message)
-
-res.status(500).json({error:"Airtable error"})
-
-}
-
-})
+    if (!name || !rfid)
+      return res.status(400).json({ error: "Thiếu name hoặc RFID" });
 
 
+    /* CHECK RFID DUPLICATE */
 
-/* =========================
-   ADD PRODUCT
-========================= */
+    const check = await axios.get(
+      `https://api.airtable.com/v0/${BASE}/San_Pham?filterByFormula={Mã RFID}='${rfid}'`,
+      { headers }
+    );
 
-router.post("/", async (req,res)=>{
+    if (check.data.records.length > 0)
+      return res.status(400).json({ error: "RFID đã tồn tại" });
 
-try{
 
-const {name,rfid,expiry,stock,minStock} = req.body
+    /* =========================
+       FIND CATEGORY
+    ========================= */
 
-if(!name || !rfid){
+    let catId = null;
 
-return res.status(400).json({
-error:"Missing product name or RFID"
-})
+    if (categoryId) {
 
-}
+      const catTable = await axios.get(
+        `https://api.airtable.com/v0/${BASE}/Danh_Muc`,
+        { headers }
+      );
 
-const response = await axios.post(
+      const found = catTable.data.records.find(
+        r => r.fields["Tên danh mục"] === categoryId
+      );
 
-`https://api.airtable.com/v0/${BASE}/${TABLE}`,
+      if (found) catId = found.id;
 
-{
-records:[
-{
-fields:{
-ID_San_Pham:name,
-"Mã RFID":rfid,
-"Hạn sử dụng":expiry,
-"Tồn tối thiểu":Number(minStock) || 0,
-"Số lượng hiện tại":Number(stock) || 0
-}
-}
-]
-},
+    }
 
-{
-headers:{
-Authorization:`Bearer ${TOKEN}`,
-"Content-Type":"application/json"
-}
-}
 
-)
+    /* =========================
+       FIND LOCATION (FIX HERE)
+    ========================= */
 
-res.json(response.data)
+    let locId = null;
 
-}
+    if (shelfLocation) {
 
-catch(error){
+      const locTable = await axios.get(
+        `https://api.airtable.com/v0/${BASE}/Vi_Tri_Ke`,
+        { headers }
+      );
 
-console.log("ADD ERROR:", error.response?.data || error.message)
+      const found = locTable.data.records.find(
+        r => r.fields["Mã vị trí"] === shelfLocation
+      );
 
-res.status(500).json({
-error:"Add product failed",
-detail:error.response?.data
-})
+      if (found) locId = found.id;
 
-}
+    }
 
-})
 
-module.exports = router
+    /* =========================
+       CREATE PRODUCT
+    ========================= */
+
+    const body = {
+
+      fields: {
+
+        "ID_San_Pham": name,
+        "Mã RFID": rfid,
+        "Hạn sử dụng": expiry || null,
+        "Tồn tối thiểu": Number(minStock) || 0,
+        "Số lượng hiện tại": Number(stock) || 0,
+        "Danh_muc_ID": catId ? [catId] : [],
+        "Vi_Tri_Ke": locId ? [locId] : []
+
+      }
+
+    };
+
+    const response = await axios.post(
+      `https://api.airtable.com/v0/${BASE}/San_Pham`,
+      body,
+      { headers }
+    );
+
+    res.json(response.data);
+
+  } catch (err) {
+
+    console.log(err.response?.data || err.message);
+    res.status(500).json({ error: "Add product failed" });
+
+  }
+
+});
+
+module.exports = router;
