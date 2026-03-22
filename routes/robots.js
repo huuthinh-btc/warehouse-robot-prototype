@@ -6,171 +6,95 @@ const BASE = process.env.BASE_ID;
 const TOKEN = process.env.AIRTABLE_API_KEY;
 
 const headers = {
-  Authorization: `Bearer ${TOKEN}`,
-  "Content-Type": "application/json"
+  Authorization: `Bearer ${TOKEN}`
 };
-
-/* ===============================
-GET ROBOT STATUS
-=============================== */
 
 router.get("/", async (req, res) => {
 
-try {
+  try {
 
-const [robotsRes, tasksRes, productsRes] = await Promise.all([
+    const [robotsRes, tasksRes, productsRes, shelvesRes] = await Promise.all([
+      axios.get(`https://api.airtable.com/v0/${BASE}/Robot`, { headers }),
+      axios.get(`https://api.airtable.com/v0/${BASE}/Nhiem_Vu`, { headers }),
+      axios.get(`https://api.airtable.com/v0/${BASE}/San_Pham`, { headers }),
+      axios.get(`https://api.airtable.com/v0/${BASE}/Vi_Tri_Ke`, { headers }) // 🔥 bắt buộc
+    ]);
 
-axios.get(`https://api.airtable.com/v0/${BASE}/Robot`, { headers }),
-axios.get(`https://api.airtable.com/v0/${BASE}/Nhiem_Vu`, { headers }),
-axios.get(`https://api.airtable.com/v0/${BASE}/San_Pham`, { headers })
+    const robots = robotsRes.data.records;
+    const tasks = tasksRes.data.records;
+    const products = productsRes.data.records;
+    const shelves = shelvesRes.data.records;
 
-]);
+    /* MAP shelfId → shelfName */
 
-const robots = robotsRes.data.records;
-const tasks = tasksRes.data.records;
-const products = productsRes.data.records;
+    const shelfMap = {};
+    shelves.forEach(s => {
+      shelfMap[s.id] = s.fields["Mã vị trí"];
+    });
 
-/* MAP ROBOT */
+    /* MAP product → shelfId */
 
-const robotIdMap = {};
-robots.forEach(r=>{
-robotIdMap[r.id] = r.fields["ID_Robot"];
-});
+    const productMap = {};
+    products.forEach(p => {
+      productMap[p.id] = {
+        name: p.fields["ID_San_Pham"],
+        shelfId: p.fields["Vi_Tri_Ke"]?.[0] // ✅ đúng kiểu
+      };
+    });
 
-/* MAP PRODUCT */
+    /* MAP task */
 
-const productMap = {};
-products.forEach(p=>{
-productMap[p.id] = p.fields["ID_San_Pham"];
-});
+    const taskMap = {};
+    tasks
+      .sort((a, b) => b.createdTime.localeCompare(a.createdTime))
+      .forEach(t => {
 
-/* MAP TASK */
+        const robotId = t.fields["ID_Robot"]?.[0];
+        const productId = t.fields["ID_San_Pham"]?.[0];
 
-const taskMap = {};
+        if (!robotId || !productId) return;
 
-tasks
-.sort((a,b)=>b.createdTime.localeCompare(a.createdTime))
-.forEach(t=>{
+        if (!taskMap[robotId]) {
+          taskMap[robotId] = {
+            task: t.fields["Loại nghiệp vụ"],
+            productId: productId,
+            time: new Date(t.createdTime).toLocaleTimeString()
+          };
+        }
 
-const f = t.fields;
+      });
 
-if(!f["ID_Robot"]) return;
+    /* BUILD RESULT */
 
-const robotRecordId = f["ID_Robot"][0];
-const robotName = robotIdMap[robotRecordId];
+    const result = robots.map(r => {
 
-if(!robotName) return;
+      const task = taskMap[r.id];
 
-if(taskMap[robotName]) return;
+      let area = "-";
 
-const productRecordId = f["ID_San_Pham"]?.[0];
+      if (task) {
+        const shelfId = productMap[task.productId]?.shelfId;
+        area = shelfMap[shelfId] || "-"; // 🔥 FIX CHUẨN
+      }
 
-const productName = productMap[productRecordId] || "-";
+      return {
+        id: r.fields["ID_Robot"],
+        status: r.fields["Trạng thái"],
+        task: task ? task.task : "Idle",
+        area: area,
+        time: task ? task.time : "-"
+      };
 
-taskMap[robotName] = {
+    });
 
-task: f["Loại nghiệp vụ"] || "N/A",
-area: productName,
-time: new Date(t.createdTime).toLocaleTimeString()
+    res.json(result);
 
-};
+  } catch (err) {
 
-});
+    console.error(err.response?.data || err.message);
+    res.status(500).json({ error: "Robot API error" });
 
-/* BUILD RESULT */
-
-const result = robots.map(r=>{
-
-const robotName = r.fields["ID_Robot"];
-
-const task = taskMap[robotName] || {
-task:"Idle",
-area:"-",
-time:"-"
-};
-
-return{
-
-id: robotName,
-status: r.fields["Trạng thái"] || "Idle",
-task: task.task,
-area: task.area,
-time: task.time
-
-};
-
-});
-
-res.json(result);
-
-}catch(err){
-
-console.error(err.response?.data || err.message);
-res.status(500).json({error:"Robot API error"});
-
-}
-
-});
-
-/* ===============================
-CREATE TASK
-=============================== */
-
-router.post("/tasks", async (req,res)=>{
-
-try{
-
-const {robot,product,taskType} = req.body;
-
-const [robotsRes,productsRes] = await Promise.all([
-
-axios.get(`https://api.airtable.com/v0/${BASE}/Robot`,{headers}),
-axios.get(`https://api.airtable.com/v0/${BASE}/San_Pham`,{headers})
-
-]);
-
-const robotRecord = robotsRes.data.records.find(
-r=>r.fields["ID_Robot"]===robot
-);
-
-const productRecord = productsRes.data.records.find(
-p=>p.fields["ID_San_Pham"]===product
-);
-
-if(!robotRecord || !productRecord){
-
-return res.status(400).json({error:"Robot/Product not found"});
-
-}
-
-const newTask = await axios.post(
-
-`https://api.airtable.com/v0/${BASE}/Nhiem_Vu`,
-
-{
-fields:{
-
-"Loại nghiệp vụ":taskType,
-"Tình trạng":"Đang xử lý",
-"ID_Robot":[robotRecord.id],
-"ID_San_Pham":[productRecord.id]
-
-}
-
-},
-
-{headers}
-
-);
-
-res.json(newTask.data);
-
-}catch(err){
-
-console.error(err.response?.data || err.message);
-res.status(500).json({error:"Create task error"});
-
-}
+  }
 
 });
 
